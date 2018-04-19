@@ -2,6 +2,9 @@ import cv2
 import numpy as np
 from feature_extraction import get_features_from_img
 import matplotlib.pyplot as plt
+import glob
+import os
+import logging
 
 # Define a function to draw bounding boxes
 def draw_boxes(img, bboxes, color=(0, 0, 255), thick=6):
@@ -78,10 +81,11 @@ def search_windows(img, windows, clf, scaler=None, color_space='RGB',
         test_img = cv2.resize(img[window[0][1]:window[1][1], window[0][0]:window[1][0]], (64, 64))
         #4) Extract features for that window using single_img_features()
         features = get_features_from_img(test_img)
+        features_scaled = scaler.transform([features])
         #5) Scale extracted features to be fed to classifier
         #test_features = scaler.transform(np.array(features).reshape(1, -1))
         #6) Predict using your classifier
-        prediction = clf.predict([features])[0]
+        prediction = clf.predict(features_scaled)[0]
         #7) If positive (prediction == 1) then save the window
         if prediction == 'car':
             on_windows.append(window)
@@ -123,7 +127,7 @@ def draw_labeled_bboxes(img, labels):
     return img
 
 
-def car_positions(image, hot_windows):
+def car_positions(image, hot_windows, filter=5):
     from scipy.ndimage.measurements import label
 
     # Read in image similar to one shown above
@@ -132,7 +136,7 @@ def car_positions(image, hot_windows):
     heat = add_heat(heat, hot_windows)
 
     # Apply threshold to help remove false positives
-    heat = apply_threshold(heat, 1)
+    heat = apply_threshold(heat, filter)
 
     # Visualize the heatmap when displaying
     heatmap = np.clip(heat, 0, 255)
@@ -141,12 +145,25 @@ def car_positions(image, hot_windows):
     labels = label(heatmap)
     draw_img = draw_labeled_bboxes(np.copy(image), labels)
 
-    fig = plt.figure()
-    plt.subplot(121)
-    plt.imshow(draw_img)
-    plt.title('Car Positions')
-    plt.subplot(122)
-    plt.imshow(heatmap, cmap='hot')
-    plt.title('Heat Map')
-    fig.tight_layout()
-    plt.show()
+    #fig = plt.figure()
+    #plt.subplot(121)
+    #plt.imshow(draw_img)
+    #plt.title('Car Positions')
+    #plt.subplot(122)
+    #plt.imshow(heatmap, cmap='hot')
+    #plt.title('Heat Map')
+    #fig.tight_layout()
+    #plt.show()
+    return draw_img
+
+def show_images(images, cols = 2, rows = 3, figsize=(15,13)):
+    """
+    Display `images` on a [`cols`, `rows`] subplot grid.
+    """
+    imgLength = len(images)
+    fig, axes = plt.subplots(rows, cols, figsize=figsize)
+    indexes = range(cols * rows)
+    for ax, index in zip(axes.flat, indexes):
+        if index < imgLength:
+            image = images[index]
+            ax.imshow(image)
